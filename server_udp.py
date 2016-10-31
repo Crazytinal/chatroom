@@ -5,26 +5,30 @@
 import socket, sys
 import select
 from struct import *
+import packet_tool
 
-# checksum functions needed for calculation checksum
-def checksum(msg):
-    s = 0
+def broadcast(sender, msg): 
+    
+    # udp header fields
+    udp_source = 1234
+    source_ip = '127.0.0.1' # TODO  get ip
+    user_data = msg
 
-    # loop taking 2 characters at a time
 
-    for i in range(0, len(msg), 2):
-        w = ord(msg[i]) + (ord(msg[i+1]) << 8 )
-        s = s + w
+    for receiver in client_list:
+        if receiver != sender:
+            try:
 
-    s = (s>>16) + (s & 0xffff);
-    s = s + (s >> 16);
+                udp_dest = receiver[1]
+                dest_ip = receiver[0]
+                packet =  packet_tool.construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)
+                s.sendto(packet, (dest_ip, 0)) #dest_addr
+            except:
+                print 'fuck'
 
-    #complement and mask to 4 byte short
-    s = ~s & 0xffff
 
-    return s
 
-#create an INET, STREAMing socket
+#create an INET, datagram socket
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
 except socket.error , msg:
@@ -33,6 +37,8 @@ except socket.error , msg:
 
 # receive a packet
 socket_list = [sys.stdin, s]
+
+client_list = []
 
 while True:
     read_sockets, write_sockets, error_sockets = select.select(socket_list , [], [])
@@ -55,12 +61,14 @@ while True:
 
             iph_length = ihl * 4
 
-            ttl = iph[5]
-            protocol = iph[6]
-            s_addr = socket.inet_ntoa(iph[8]);
-            d_addr = socket.inet_ntoa(iph[9]);
+            # ttl = iph[5]
+            # protocol = iph[6]
+            s_addr = str(socket.inet_ntoa(iph[8]));
+            d_addr = str(socket.inet_ntoa(iph[9]));
 
-            #print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
+            # print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
+            # print s_addr, d_addr
+
 
             udp_header = packet[iph_length:iph_length+8]
 
@@ -72,7 +80,16 @@ while True:
             udp_length = udph[2]
             udp_checksum = udph[3]
             udph_length = 8
-            if dest_port == 1234 and source_port == 4321:
+
+            # server port: 1234    client port: 4321  
+            # in this case, server receive udp from client
+            if dest_port == 1234 :
+                sender = (s_addr,source_port)
+
+                if sender not in client_list:
+                    client_list.append((s_addr,source_port))
+                print client_list
+
                 print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' UDP  length : ' + str(udp_length)
 
                 h_size = iph_length + udph_length
@@ -86,51 +103,19 @@ while True:
                     sys.exit()
                 else:
                     print 'Data : ' + data
+
+                    # client want ip list
+
+                    # client want to with group
                     sys.stdout.write("enter command: ")
                     sys.stdout.flush()
         else:
             msg = sys.stdin.readline()
 
-
-            # now start constructing the packet
-            packet = '';
-
-            source_ip = '127.0.0.1'
-            # dest_ip = '172.18.181.227' # or socket.gethostbyname('www.google.com')
-            dest_ip = '127.0.0.1' # or socket.gethostbyname('www.google.com')
+            broadcast(sender,msg)
 
 
 
-            user_data = msg
-
-            # udp header fields
-            udp_source = 1234   # source port
-            udp_dest = 4321   # destination port
-            udp_length = 8+len(user_data)
-            udp_check = 0
-
-            # the ! in the pack format string means network order
-            udp_header = pack('!HHHH' , udp_source, udp_dest,udp_length, udp_check)
 
 
-            # pseudo header fields
-            source_address = socket.inet_aton( source_ip )
-            dest_address = socket.inet_aton(dest_ip)
-            placeholder = 0
-            protocol = socket.IPPROTO_UDP
 
-            psh = pack('!4s4sBBH' , source_address , dest_address , placeholder , protocol , udp_length);
-            psh = psh + udp_header + user_data;
-
-            if len(user_data) % 2 == 1:
-                psh = psh + '\0'
-            udp_check = checksum(psh)
-
-            # make the tcp header again and fill the correct checksum - remember checksum is NOT in network byte order
-            udp_header = pack('!HHH' , udp_source, udp_dest, udp_length) + pack('H', udp_check)
-
-            # final full packet - syn packets dont have any data
-            packet =  udp_header + user_data
-
-
-            s.sendto(packet, (dest_ip, 0)) #dest_addr

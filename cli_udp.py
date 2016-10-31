@@ -4,6 +4,8 @@
 
 import socket, sys
 import select
+import random
+import packet_tool
 from struct import *
 
 # checksum functions needed for calculation checksum
@@ -33,6 +35,8 @@ except socket.error , msg:
 
 # receive a packet
 socket_list = [sys.stdin, s]
+
+client_port = 1234 + int(random.random()*100)
 
 while True:
     read_sockets, write_sockets, error_sockets = select.select(socket_list , [], [])
@@ -64,36 +68,35 @@ while True:
 
             udp_header = packet[iph_length:iph_length+8]
 
-            #now unpack them :)
-            udph = unpack('!HHHH' , udp_header)
-            # print udph
-            source_port = udph[0]
-            dest_port = udph[1]
-            udp_length = udph[2]
-            udp_checksum = udph[3]
+            #now unpack them 
+            source_port, dest_port, udp_length, udp_checksum  = unpack('!HHHH' , udp_header)
+            
             udph_length = 8
-            if dest_port == 4321  and source_port == 1234:
-                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' UDP  length : ' + str(udp_length)
 
-                h_size = iph_length + udph_length
-                data_size = len(packet) - h_size
+            if dest_port == client_port:
 
-                #get data from the packet
-                data = packet[h_size:]
+                # client receive udp from server
+                if source_port == 1234:
+                    print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' UDP  length : ' + str(udp_length)
 
-                if not data:
-                    print '\nDisconnected from chat server'
-                    sys.exit()
-                else:
-                    print 'Data : ' + data
-                    sys.stdout.write("enter command: ")
-                    sys.stdout.flush()
+                    h_size = iph_length + udph_length
+                    data_size = len(packet) - h_size
+
+                    #get data from the packet
+                    data = packet[h_size:]
+
+                    if not data:
+                        print '\nDisconnected from chat server'
+                        sys.exit()
+                    else:
+                        print 'Data : ' + data
+                        sys.stdout.write("enter command: ")
+                        sys.stdout.flush()
         else:
             msg = sys.stdin.readline()
 
 
             # now start constructing the packet
-            packet = '';
 
             #source_ip = '10.0.2.15'
             source_ip = '127.0.0.1'
@@ -101,37 +104,16 @@ while True:
             dest_ip = '127.0.0.1' # or socket.gethostbyname('www.google.com')
 
 
-
             user_data = msg
 
             # udp header fields
-            udp_source = 4321   # source port
+            udp_source = client_port   # source port
             udp_dest = 1234   # destination port
-            udp_length = 8+len(user_data)
-            udp_check = 0
-
-            # the ! in the pack format string means network order
-            udp_header = pack('!HHHH' , udp_source, udp_dest,udp_length, udp_check)
 
 
-            # pseudo header fields
-            source_address = socket.inet_aton( source_ip )
-            dest_address = socket.inet_aton(dest_ip)
-            placeholder = 0
-            protocol = socket.IPPROTO_UDP
-
-            psh = pack('!4s4sBBH' , source_address , dest_address , placeholder , protocol , udp_length);
-            psh = psh + udp_header + user_data;
-
-            if len(user_data) % 2 == 1:
-                psh = psh + '\0'
-            udp_check = checksum(psh)
-
-            # make the tcp header again and fill the correct checksum - remember checksum is NOT in network byte order
-            udp_header = pack('!HHH' , udp_source, udp_dest, udp_length) + pack('H', udp_check)
 
             # final full packet - syn packets dont have any data
-            packet =  udp_header + user_data
+            packet = packet_tool.construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)
 
 
             s.sendto(packet, (dest_ip, 0)) #dest_addr
