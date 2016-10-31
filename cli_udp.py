@@ -6,7 +6,12 @@ import socket, sys
 import select
 import random
 import packet_tool
+import ast
 from struct import *
+
+SHOW_IP = "0"
+GROUP_CHAT = "1"
+CHECK_IF_ONLINE = "2"
 
 # checksum functions needed for calculation checksum
 def checksum(msg):
@@ -28,6 +33,8 @@ def checksum(msg):
 
 #create an INET, STREAMing socket
 try:
+    server_ip = raw_input('please input the ip of your server: ')
+    cli_name = raw_input('pick up a name for yourself: ')
     s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_UDP)
 except socket.error , msg:
     print 'Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
@@ -91,8 +98,21 @@ while True:
                         sys.exit()
                     else:
                         print 'Data : ' + data
-                        sys.stdout.write("enter command: ")
-                        sys.stdout.flush()
+                        # sys.stdout.write("enter command: ")
+                        # sys.stdout.flush()
+                        print data[0], data[0] == SHOW_IP
+
+                        if data[0] == SHOW_IP:
+                            client_list = ast.literal_eval(data[1:])
+                            print client_list
+                        elif data[0] == GROUP_CHAT:
+                            print 'GROUP_CHAT'
+                        elif data[0] == CHECK_IF_ONLINE:
+                            receiver = (server_ip, source_port)
+                            print receiver
+                            msg = cli_name
+                            packet_tool.send_packet(client_port, receiver, msg, s)
+
                 else:
                     print source_port
                     print data
@@ -107,10 +127,10 @@ while True:
 
             #source_ip = '10.0.2.15'
             source_ip = '127.0.0.1'
-            dest_ip = '172.18.181.227' # or socket.gethostbyname('www.google.com')
-            # dest_ip = '127.0.0.1' # or socket.gethostbyname('www.google.com')
+            # dest_ip = '172.18.181.227' # or socket.gethostbyname('www.google.com')
+            dest_ip = server_ip # or socket.gethostbyname('www.google.com')
 
-            command = msg[0]
+            command = msg
             user_data = msg
 
 
@@ -118,12 +138,14 @@ while True:
             udp_source = client_port   # source port
             udp_dest = 1234   # destination port
             
-            if command == "2":
-                receiver_port = int(msg[1:5])
+            if command == "p2p":
+                # receiver_port = client_list[]
+
                 # receiver_port = input("receiver_port: ")
 
                 udp_dest = receiver_port
                 print 'udp_dest: ', udp_dest
+
 
 
             # final full packet - syn packets dont have any data

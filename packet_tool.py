@@ -60,3 +60,22 @@ def construct_udp_pseudo_header(src_ip, dst_ip, udp_header_for_checksum, user_da
 
     return psh
 
+def send_packet(src_port, receiver, msg, sock):
+    # udp header fields
+    udp_source = src_port
+    udp_dest = receiver[1]
+
+    source_ip = '127.0.0.1' # TODO  get ip
+    dest_ip = receiver[0]
+
+    user_data = msg
+
+    packet =  construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)
+    sock.sendto(packet, (dest_ip, 0)) #dest_addr    
+
+def broadcast(sender, msg, receivers, sock): 
+    server_port = 1234
+    for receiver in receivers:
+        if receiver != sender:
+            # try:
+                send_packet(server_port, receiver, msg, sock)

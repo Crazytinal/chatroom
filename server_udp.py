@@ -8,27 +8,11 @@ from struct import *
 import packet_tool
 
 
-def send_packet(receiver, msg):
-    # udp header fields
-    udp_source = 1234
-    udp_dest = receiver[1]
+SHOW_IP = "0"
+GROUP_CHAT = "1"
 
-    source_ip = '127.0.0.1' # TODO  get ip
-    dest_ip = receiver[0]
 
-    user_data = msg
 
-    packet =  packet_tool.construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)
-    s.sendto(packet, (dest_ip, 0)) #dest_addr    
-
-def broadcast(sender, msg, receivers): 
-    
-    for receiver in receivers:
-        if receiver != sender:
-            try:
-                send_packet(receiver, msg)
-            except:
-                print 'fuck'
 
 
 
@@ -43,6 +27,7 @@ except socket.error , msg:
 socket_list = [sys.stdin, s]
 
 client_list = []
+server_port = 1234
 
 while True:
     read_sockets, write_sockets, error_sockets = select.select(socket_list , [], [])
@@ -57,7 +42,7 @@ while True:
             ip_header = packet[0:20]
 
             #now unpack them :)
-            iph = unpack('!BBHHHBBH4s4s' , ip_header)
+            iph = unpack('!BBHHHBBH4s4s' , ip_header)   
 
             version_ihl = iph[0]
             version = version_ihl >> 4
@@ -87,7 +72,7 @@ while True:
 
             # server port: 1234    client port: 4321  
             # in this case, server receive udp from client
-            if dest_port == 1234 :
+            if dest_port == server_port :
                 sender = (s_addr,source_port)
 
                 if sender not in client_list:
@@ -112,12 +97,12 @@ while True:
                     command = data[0]
                     print command
 
-                    if command == "1":
-                        broadcast(sender, data[1:], client_list)
-                    elif command == "0":
+                    if command == GROUP_CHAT:
+                        packet_tool.broadcast(sender, data[1:], client_list, s)
+                    elif command == SHOW_IP:
                         ip_info = str(client_list)
-                        send_packet(sender, ip_info)
-                        
+                        packet_tool.send_packet(server_port, sender, SHOW_IP+ip_info, s)
+
 
                     # client want to with group
                     sys.stdout.write("enter command: ")
@@ -125,7 +110,7 @@ while True:
         else:
             msg = sys.stdin.readline()
 
-            broadcast(sender,msg, client_list)
+            packet_tool.broadcast(' ',msg, client_list, s)
 
 
 
