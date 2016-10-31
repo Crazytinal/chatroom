@@ -100,7 +100,6 @@ while True:
                         print 'Data : ' + data
                         # sys.stdout.write("enter command: ")
                         # sys.stdout.flush()
-                        print data[0], data[0] == SHOW_IP
 
                         if data[0] == SHOW_IP:
                             client_list = ast.literal_eval(data[1:])
@@ -130,7 +129,7 @@ while True:
             # dest_ip = '172.18.181.227' # or socket.gethostbyname('www.google.com')
             dest_ip = server_ip # or socket.gethostbyname('www.google.com')
 
-            command = msg
+            command = msg[0:3]
             user_data = msg
 
 
@@ -139,14 +138,18 @@ while True:
             udp_dest = 1234   # destination port
             
             if command == "p2p":
-                # receiver_port = client_list[]
+                receiver_port = int(msg[3:8])
+                user_data = msg[8:]
 
                 # receiver_port = input("receiver_port: ")
 
                 udp_dest = receiver_port
                 print 'udp_dest: ', udp_dest
 
-
+            elif command == "\ip":
+                user_data = '0'
+            else:
+                user_data = "1" + user_data
 
             # final full packet - syn packets dont have any data
             packet = packet_tool.construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)

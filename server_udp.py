@@ -10,7 +10,7 @@ import packet_tool
 
 SHOW_IP = "0"
 GROUP_CHAT = "1"
-
+ONLINE_ACK = "2"
 
 
 
@@ -28,6 +28,7 @@ socket_list = [sys.stdin, s]
 
 client_list = []
 server_port = 1234
+online_list = []
 
 while True:
     read_sockets, write_sockets, error_sockets = select.select(socket_list , [], [])
@@ -95,13 +96,17 @@ while True:
 
                     # client want ip list
                     command = data[0]
-                    print command
 
                     if command == GROUP_CHAT:
                         packet_tool.broadcast(sender, data[1:], client_list, s)
                     elif command == SHOW_IP:
                         ip_info = str(client_list)
+                        
                         packet_tool.send_packet(server_port, sender, SHOW_IP+ip_info, s)
+                    elif command == ONLINE_ACK:
+                        name = data[1:]
+                        online_list.append((name, s_addr, source_port))
+
 
 
                     # client want to with group
