@@ -7,22 +7,26 @@ import select
 from struct import *
 import packet_tool
 
-def broadcast(sender, msg): 
-    
+
+def send_packet(receiver, msg):
     # udp header fields
     udp_source = 1234
+    udp_dest = receiver[1]
+
     source_ip = '127.0.0.1' # TODO  get ip
+    dest_ip = receiver[0]
+
     user_data = msg
 
+    packet =  packet_tool.construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)
+    s.sendto(packet, (dest_ip, 0)) #dest_addr    
 
-    for receiver in client_list:
+def broadcast(sender, msg, receivers): 
+    
+    for receiver in receivers:
         if receiver != sender:
             try:
-
-                udp_dest = receiver[1]
-                dest_ip = receiver[0]
-                packet =  packet_tool.construct_packet(source_ip, dest_ip, udp_source, udp_dest, user_data)
-                s.sendto(packet, (dest_ip, 0)) #dest_addr
+                send_packet(receiver, msg)
             except:
                 print 'fuck'
 
@@ -105,6 +109,15 @@ while True:
                     print 'Data : ' + data
 
                     # client want ip list
+                    command = data[0]
+                    print command
+
+                    if command == "1":
+                        broadcast(sender, data[1:], client_list)
+                    elif command == "0":
+                        ip_info = str(client_list)
+                        send_packet(sender, ip_info)
+                        
 
                     # client want to with group
                     sys.stdout.write("enter command: ")
@@ -112,7 +125,7 @@ while True:
         else:
             msg = sys.stdin.readline()
 
-            broadcast(sender,msg)
+            broadcast(sender,msg, client_list)
 
 
 

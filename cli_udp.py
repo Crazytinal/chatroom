@@ -75,15 +75,16 @@ while True:
 
             if dest_port == client_port:
 
+                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' UDP  length : ' + str(udp_length)
+
+                h_size = iph_length + udph_length
+                data_size = len(packet) - h_size
+
+                #get data from the packet
+                data = packet[h_size:]
+
                 # client receive udp from server
                 if source_port == 1234:
-                    print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' UDP  length : ' + str(udp_length)
-
-                    h_size = iph_length + udph_length
-                    data_size = len(packet) - h_size
-
-                    #get data from the packet
-                    data = packet[h_size:]
 
                     if not data:
                         print '\nDisconnected from chat server'
@@ -92,6 +93,12 @@ while True:
                         print 'Data : ' + data
                         sys.stdout.write("enter command: ")
                         sys.stdout.flush()
+                else:
+                    print source_port
+                    print data
+
+                receiver_port = source_port
+                receiver_ip = str(s_addr)
         else:
             msg = sys.stdin.readline()
 
@@ -100,16 +107,23 @@ while True:
 
             #source_ip = '10.0.2.15'
             source_ip = '127.0.0.1'
-            #dest_ip = '172.18.181.227' # or socket.gethostbyname('www.google.com')
-            dest_ip = '127.0.0.1' # or socket.gethostbyname('www.google.com')
+            dest_ip = '172.18.181.227' # or socket.gethostbyname('www.google.com')
+            # dest_ip = '127.0.0.1' # or socket.gethostbyname('www.google.com')
 
-
+            command = msg[0]
             user_data = msg
+
 
             # udp header fields
             udp_source = client_port   # source port
             udp_dest = 1234   # destination port
+            
+            if command == "2":
+                receiver_port = int(msg[1:5])
+                # receiver_port = input("receiver_port: ")
 
+                udp_dest = receiver_port
+                print 'udp_dest: ', udp_dest
 
 
             # final full packet - syn packets dont have any data
